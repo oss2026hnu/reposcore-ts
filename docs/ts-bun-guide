@@ -17,7 +17,6 @@ TypeScript를 직접 실행할 수 있는 런타임으로는 **Deno**와 **Bun**
     "vscode": {
       "extensions": [
         "oven.bun-vscode",
-        "ms-vscode.vscode-typescript-next",
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "EditorConfig.EditorConfig"
@@ -32,7 +31,6 @@ TypeScript를 직접 실행할 수 있는 런타임으로는 **Deno**와 **Bun**
 | 확장 ID | 역할 |
 |---------|------|
 | `oven.bun-vscode` | Bun 런타임 지원 및 디버거. TypeScript 파일 실행·디버그, 테스트 결과 인라인 표시, 실행 중 오류 위치를 에디터에서 바로 확인 |
-| `ms-vscode.vscode-typescript-next` | TypeScript nightly 빌드 적용. 최신 TypeScript 기능을 안정 릴리즈 전에 사용 가능 |
 | `dbaeumer.vscode-eslint` | ESLint를 VSCode에 통합. 코드 작성 중 린팅 오류를 밑줄/경고로 표시하고 Quick Fix로 자동 수정 |
 | `esbenp.prettier-vscode` | 파일 저장 시 코드 스타일 자동 정리 (들여쓰기, 따옴표, 세미콜론 등) |
 | `EditorConfig.EditorConfig` | `.editorconfig` 파일을 읽어 에디터 설정을 자동으로 적용. 팀원 간 불필요한 diff 방지 |
