@@ -1,10 +1,9 @@
 # TypeScript + Bun 개발환경 가이드
-
 ## 배경
-
 웹 브라우저와 독립적인 JS 개발(CLI, 백엔드)의 표준 런타임은 **Node.js**입니다.
 TypeScript를 직접 실행할 수 있는 런타임으로는 **Deno**와 **Bun**이 있으며, 이 프로젝트는 **Bun**을 사용합니다.
 ---
+
 ## 개발환경 (Codespaces 기준)
 
 이 프로젝트는 GitHub Codespaces를 기본 개발환경으로 사용합니다.
@@ -14,15 +13,11 @@ TypeScript를 직접 실행할 수 있는 런타임으로는 **Deno**와 **Bun**
 
 ```json
 {
-  "name": "reposcore-ts",
-  "features": {
-    "ghcr.io/devcontainers-extra/features/bun:1": {}
-  },
-  "postCreateCommand": "bun install",
   "customizations": {
     "vscode": {
       "extensions": [
         "oven.bun-vscode",
+        "ms-vscode.vscode-typescript-next",
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "EditorConfig.EditorConfig"
@@ -32,17 +27,12 @@ TypeScript를 직접 실행할 수 있는 런타임으로는 **Deno**와 **Bun**
 }
 ```
 
-| 항목 | 설명 |
-|------|------|
-| `features` | Codespaces 컨테이너 빌드 시 Bun을 자동으로 설치 |
-| `postCreateCommand` | 컨테이너 생성 후 `bun install`을 자동 실행하여 의존성 설치 |
-| `extensions` | VSCode 확장 자동 설치 (아래 표 참고) |
-
 ### 자동 설치되는 VSCode 확장
 
 | 확장 ID | 역할 |
 |---------|------|
 | `oven.bun-vscode` | Bun 런타임 지원 및 디버거. TypeScript 파일 실행·디버그, 테스트 결과 인라인 표시, 실행 중 오류 위치를 에디터에서 바로 확인 |
+| `ms-vscode.vscode-typescript-next` | TypeScript nightly 빌드 적용. 최신 TypeScript 기능을 안정 릴리즈 전에 사용 가능 |
 | `dbaeumer.vscode-eslint` | ESLint를 VSCode에 통합. 코드 작성 중 린팅 오류를 밑줄/경고로 표시하고 Quick Fix로 자동 수정 |
 | `esbenp.prettier-vscode` | 파일 저장 시 코드 스타일 자동 정리 (들여쓰기, 따옴표, 세미콜론 등) |
 | `EditorConfig.EditorConfig` | `.editorconfig` 파일을 읽어 에디터 설정을 자동으로 적용. 팀원 간 불필요한 diff 방지 |
