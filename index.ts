@@ -39,6 +39,8 @@ cli
 
       const githubService = createGitHubService(token);
 
+      let hasError = false;
+
       for (const repoPath of repos) {
         const parts = repoPath.split('/');
 
@@ -46,6 +48,7 @@ cli
           console.error(
             `오류: '${repoPath}'는 'owner/repo' 형식이 아닙니다. 건너뜀.`,
           );
+          hasError = true;
           continue;
         }
 
@@ -62,8 +65,12 @@ cli
             error instanceof Error ? error.message : String(error);
           console.error(`오류: '${repoPath}'의 데이터를 가져올 수 없습니다.`);
           console.error(`상세 원인: ${errorMessage}`);
-          process.exit(1);
+          hasError = true;
         }
+      }
+
+      if (hasError) {
+        process.exitCode = 1;
       }
     },
   );
