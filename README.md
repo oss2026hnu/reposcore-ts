@@ -10,24 +10,6 @@ Install dependencies:
 bun install
 ```
 
-Run the CLI:
-
-```bash
-bun run index.ts <owner/repo> [options]
-```
-
-Example:
-
-```bash
-bun run index.ts oss2026hnu/reposcore-ts --format csv
-```
-
-You can also pass a GitHub Personal Access Token with `--token`:
-
-```bash
-bun run index.ts oss2026hnu/reposcore-ts --token your_token --format txt
-```
-
 If you do not pass a token with `--token`, set the `GITHUB_TOKEN` environment variable before running the CLI.
 
 ## Synopsis
@@ -35,6 +17,12 @@ If you do not pass a token with `--token`, set the `GITHUB_TOKEN` environment va
 ```text
 For more info, run any command with the `--help` flag:
   $ reposcore-ts --help
+
+Usage:
+  $ reposcore-ts [...repos]
+
+여러 개의 저장소를 한 번에 분석할 수 있습니다.
+  예: reposcore-ts owner/repo1 owner/repo2 owner/repo3
 
 Options:
   --token <token>    GitHub Personal Access Token (default: $GITHUB_TOKEN)
