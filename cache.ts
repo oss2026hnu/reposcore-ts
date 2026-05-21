@@ -1,5 +1,8 @@
 const CACHE_DIR = '.cache';
 
+/** 기본 캐시 유효 시간: 24시간 (밀리초 단위) */
+const DEFAULT_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
 // 저장소별 분석 캐시 데이터 구조. JSON 파일로 직렬화되어 저장됨.
 export interface RepoCache<T> {
   repository: string;
@@ -12,7 +15,7 @@ const getCacheFilePath = (owner: string, repo: string): string =>
   `${CACHE_DIR}/${owner}_${repo}/cache.json`;
 
 // 기존 캐시 파일을 읽어 RepoCache 객체를 반환합니다.
-// 파일이 없거나 손상된 경우, 또는 noCache=true이면 null을 반환합니다.
+// 파일이 없거나 손상된 경우, noCache=true이거나 캐시가 만료된 경우 null을 반환합니다.
 export const loadCache = async <T>(
   owner: string,
   repo: string,
@@ -31,6 +34,31 @@ export const loadCache = async <T>(
   try {
     const cache = (await file.json()) as RepoCache<T>;
     if (cache.repository !== `${owner}/${repo}`) return null;
+
+    // lastAnalyzedAt 유효성 검사
+    if (!cache.lastAnalyzedAt) {
+      console.error(
+        `[cache] ${owner}/${repo} — 캐시 저장 시각이 없어 새로 수집합니다.`,
+      );
+      return null;
+    }
+
+    const analyzedAt = Date.parse(cache.lastAnalyzedAt);
+
+    if (Number.isNaN(analyzedAt)) {
+      console.error(
+        `[cache] ${owner}/${repo} — 캐시 저장 시각이 올바르지 않아 새로 수집합니다.`,
+      );
+      return null;
+    }
+
+    // TTL 초과 여부 검사
+    if (Date.now() - analyzedAt > DEFAULT_CACHE_TTL_MS) {
+      console.error(
+        `[cache] ${owner}/${repo} — 캐시가 만료되어 새로 수집합니다.`,
+      );
+      return null;
+    }
 
     console.error(`[cache] ${owner}/${repo} — 캐시에서 읽습니다.`);
     return cache;
