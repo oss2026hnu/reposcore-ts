@@ -1,5 +1,5 @@
-import { cac } from "cac";
-import pkg from "./package.json" with { type: "json"};
+import {cac} from 'cac';
+import pkg from './package.json' with {type: 'json'};
 
 import {createGitHubService} from './github-service';
 import {ScoreCalculator, type RepoData} from './score-calculator';
@@ -11,6 +11,12 @@ cli.version(pkg.version);
 
 const supportedFormats = ['csv', 'txt'] as const;
 type SupportedFormat = (typeof supportedFormats)[number];
+
+const supportedSortBys = ['score', 'id'] as const;
+type SupportedSortBy = (typeof supportedSortBys)[number];
+
+const supportedSortOrders = ['asc', 'desc'] as const;
+type SupportedSortOrder = (typeof supportedSortOrders)[number];
 
 function parseRepoPath(repoPath: string) {
   const parts = repoPath.split('/');
@@ -25,6 +31,35 @@ function parseRepoPath(repoPath: string) {
   };
 }
 
+/**
+ * 사용자 점수 목록을 지정된 기준과 방향에 따라 정렬합니다.
+ * @param scores 정렬할 사용자 점수 레코드 배열
+ * @param sortBy 정렬 기준 ('score' 또는 'id')
+ * @param sortOrder 정렬 방향 ('asc' 또는 'desc')
+ * @returns 정렬이 완료된 새로운 사용자 점수 배열
+ */
+function sortUserScores(
+  scores: Record<string, unknown>[],
+  sortBy: SupportedSortBy,
+  sortOrder: SupportedSortOrder,
+) {
+  return [...scores].sort((a, b) => {
+    let compareResult = 0;
+
+    if (sortBy === 'id') {
+      const idA = String(a.userId || '');
+      const idB = String(b.userId || '');
+      compareResult = idA.localeCompare(idB);
+    } else {
+      const scoreA = Number(a.totalScore ?? 0);
+      const scoreB = Number(b.totalScore ?? 0);
+      compareResult = scoreA - scoreB;
+    }
+
+    return sortOrder === 'desc' ? -compareResult : compareResult;
+  });
+}
+
 cli
   .command('[...repos]', '대상 저장소 목록 (예: owner/repo1 owner/repo2)')
   .option('--token <token>', 'GitHub Personal Access Token', {
@@ -34,16 +69,30 @@ cli
     default: 'csv',
   })
   .option('--no-cache', '캐시를 무시하고 GitHub API를 새로 호출합니다')
+  .option('--sort-by <sortBy>', '정렬 기준 (score, id)', {
+    default: 'score',
+  })
+  .option('--sort-order <sortOrder>', '정렬 방법 (asc, desc)', {
+    default: 'desc',
+  })
   .action(
     async (
       repos: string[],
-      options: {token?: string; format: string; cache: boolean},
+      options: {
+        token?: string;
+        format: string;
+        cache: boolean;
+        sortBy: string;
+        sortOrder: string;
+      },
     ) => {
       const token =
         options.token === '$GITHUB_TOKEN'
           ? Bun.env.GITHUB_TOKEN || ''
           : options.token || '';
       const format = String(options.format || '').toLowerCase();
+      const sortBy = String(options.sortBy || '').toLowerCase();
+      const sortOrder = String(options.sortOrder || '').toLowerCase();
       const useCache = options.cache; // --no-cache 전달 시 false
       const errors: string[] = [];
       const parsedRepos: {
@@ -61,6 +110,18 @@ cli
       if (!supportedFormats.includes(format as SupportedFormat)) {
         errors.push(
           `오류: 지원하지 않는 출력 형식 '${options.format}'입니다. csv 또는 txt를 입력하세요.`,
+        );
+      }
+
+      if (!supportedSortBys.includes(sortBy as SupportedSortBy)) {
+        errors.push(
+          `오류: 지원하지 않는 정렬 기준 '${options.sortBy}'입니다. score 또는 id를 입력하세요.`,
+        );
+      }
+
+      if (!supportedSortOrders.includes(sortOrder as SupportedSortOrder)) {
+        errors.push(
+          `오류: 지원하지 않는 정렬 방향 '${options.sortOrder}'입니다. asc 또는 desc를 입력하세요.`,
         );
       }
 
@@ -119,9 +180,15 @@ cli
           repoDataList.push(repoData);
           repoSummaries.push(repoSummary);
 
-          const singleUserScores = ScoreCalculator.calculateUserScores([
+          const rawSingleUserScores = ScoreCalculator.calculateUserScores([
             repoData,
           ]);
+          const singleUserScores = sortUserScores(
+            rawSingleUserScores,
+            sortBy as SupportedSortBy,
+            sortOrder as SupportedSortOrder,
+          );
+
           const subDir = `${owner}-${repoName}`;
           const written = await writeOutputFiles(
             format as SupportedFormat,
@@ -147,7 +214,12 @@ cli
       }
 
       if (parsedRepos.length >= 2) {
-        const userScores = ScoreCalculator.calculateUserScores(repoDataList);
+        const rawUserScores = ScoreCalculator.calculateUserScores(repoDataList);
+        const userScores = sortUserScores(
+          rawUserScores,
+          sortBy as SupportedSortBy,
+          sortOrder as SupportedSortOrder,
+        );
 
         const written = await writeOutputFiles(format as SupportedFormat, {
           userScores,
