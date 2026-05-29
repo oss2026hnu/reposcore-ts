@@ -2,7 +2,12 @@ import {cac} from 'cac';
 import pkg from './package.json' with {type: 'json'};
 
 import {createGitHubService} from './github-service';
-import {ScoreCalculator, type RepoData} from './score-calculator';
+// score-calculator가 직접 export하는 UserScore 원본 인터페이스를 안전하게 import합니다.
+import {
+  ScoreCalculator,
+  type RepoData,
+  type UserScore,
+} from './score-calculator';
 import {summarizeRepo, writeOutputFiles} from './output';
 import type {RepoSummary} from './output';
 
@@ -39,20 +44,20 @@ function parseRepoPath(repoPath: string) {
  * @returns 정렬이 완료된 새로운 사용자 점수 배열
  */
 function sortUserScores(
-  scores: Record<string, unknown>[],
+  scores: UserScore[],
   sortBy: SupportedSortBy,
   sortOrder: SupportedSortOrder,
-) {
+): UserScore[] {
   return [...scores].sort((a, b) => {
     let compareResult = 0;
 
     if (sortBy === 'id') {
-      const idA = String(a.userId || '');
-      const idB = String(b.userId || '');
+      const idA = a.userId || '';
+      const idB = b.userId || '';
       compareResult = idA.localeCompare(idB);
     } else {
-      const scoreA = Number(a.totalScore ?? 0);
-      const scoreB = Number(b.totalScore ?? 0);
+      const scoreA = a.totalScore ?? 0;
+      const scoreB = b.totalScore ?? 0;
       compareResult = scoreA - scoreB;
     }
 
