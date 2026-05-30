@@ -2,7 +2,6 @@ import {cac} from 'cac';
 import pkg from './package.json' with {type: 'json'};
 
 import {createGitHubService} from './github-service';
-// score-calculator가 직접 export하는 UserScore 원본 인터페이스를 안전하게 import합니다.
 import {
   ScoreCalculator,
   type RepoData,
@@ -160,8 +159,8 @@ cli
         process.exit(1);
       }
 
-      console.error(`형식: ${format}`);
-      console.error(`저장소: ${repos.join(', ')}`);
+      console.error(`format: ${format}`);
+      console.error(`repositories: ${repos.join(', ')}`);
 
       const githubService = createGitHubService(token);
       const repoDataList: RepoData[] = [];
@@ -185,11 +184,9 @@ cli
           repoDataList.push(repoData);
           repoSummaries.push(repoSummary);
 
-          const rawSingleUserScores = ScoreCalculator.calculateUserScores([
-            repoData,
-          ]);
+          // 변경 사항 최소화 피드백 반영: 임시 변수 없이 기존 변수명에 바로 정렬 결과 대입
           const singleUserScores = sortUserScores(
-            rawSingleUserScores,
+            ScoreCalculator.calculateUserScores([repoData]),
             sortBy as SupportedSortBy,
             sortOrder as SupportedSortOrder,
           );
@@ -219,9 +216,9 @@ cli
       }
 
       if (parsedRepos.length >= 2) {
-        const rawUserScores = ScoreCalculator.calculateUserScores(repoDataList);
+        // 변경 사항 최소화 피드백 반영: 임시 변수 없이 기존 변수명에 바로 정렬 결과 대입
         const userScores = sortUserScores(
-          rawUserScores,
+          ScoreCalculator.calculateUserScores(repoDataList),
           sortBy as SupportedSortBy,
           sortOrder as SupportedSortOrder,
         );
