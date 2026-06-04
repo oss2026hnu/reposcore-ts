@@ -80,6 +80,80 @@ const USER_CSV_HEADERS = [
   'totalScore',
 ] as const;
 
+interface UserContributionCounts {
+  userId: string;
+  prFeatureBug: number;
+  prDocs: number;
+  prTypo: number;
+  issueFeatureBug: number;
+  issueDocs: number;
+  totalScore: number;
+}
+
+const aggregateUserContribution = (user: UserScore): UserContributionCounts => {
+  let prFeatureBug = 0;
+  let prDocs = 0;
+  let prTypo = 0;
+  let issueFeatureBug = 0;
+  let issueDocs = 0;
+
+  for (const repo of user.repoScores) {
+    for (const data of repo.scoreData) {
+      prFeatureBug += data.prFeatureBug;
+      prDocs += data.prDocs;
+      prTypo += data.prTypo;
+      issueFeatureBug += data.issueFeatureBug;
+      issueDocs += data.issueDocs;
+    }
+  }
+
+  return {
+    userId: user.userId,
+    prFeatureBug,
+    prDocs,
+    prTypo,
+    issueFeatureBug,
+    issueDocs,
+    totalScore: user.totalScore,
+  };
+};
+
+const formatDateTime = (date: Date): string => {
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return (
+    [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join(
+      '-',
+    ) + ` ${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+};
+
+const buildMarkdownTable = (
+  headers: readonly string[],
+  rows: ReadonlyArray<readonly string[]>,
+  rightAlignedColumns: ReadonlySet<number>,
+): string[] => {
+  const widths = headers.map((header, index) =>
+    Math.max(header.length, ...rows.map(row => row[index]?.length ?? 0)),
+  );
+  const formatRow = (cells: readonly string[]): string =>
+    `| ${cells
+      .map((cell, index) =>
+        rightAlignedColumns.has(index)
+          ? cell.padStart(widths[index]!)
+          : cell.padEnd(widths[index]!),
+      )
+      .join(' | ')} |`;
+  const separator = `| ${widths
+    .map((width, index) =>
+      rightAlignedColumns.has(index)
+        ? `${'-'.repeat(Math.max(width - 1, 1))}:`
+        : '-'.repeat(width),
+    )
+    .join(' | ')} |`;
+
+  return [formatRow(headers), separator, ...rows.map(formatRow)];
+};
+
 /**
  * 전체 사용자 점수 목록을 받아 CSV 파일에 기록할 텍스트 문자열을 빌드합니다.
  *
@@ -88,74 +162,114 @@ const USER_CSV_HEADERS = [
  */
 export const buildUserScoresCsv = (users: ReadonlyArray<UserScore>): string => {
   const rows = users.map(user => {
-    let prFeatureBug = 0;
-    let prDocs = 0;
-    let prTypo = 0;
-    let issueFeatureBug = 0;
-    let issueDocs = 0;
-    for (const repo of user.repoScores) {
-      for (const data of repo.scoreData) {
-        prFeatureBug += data.prFeatureBug;
-        prDocs += data.prDocs;
-        prTypo += data.prTypo;
-        issueFeatureBug += data.issueFeatureBug;
-        issueDocs += data.issueDocs;
-      }
-    }
-    return [
-      user.userId,
+    const {
+      userId,
       prFeatureBug,
       prDocs,
       prTypo,
       issueFeatureBug,
       issueDocs,
-      user.totalScore,
+      totalScore,
+    } = aggregateUserContribution(user);
+
+    return [
+      userId,
+      prFeatureBug,
+      prDocs,
+      prTypo,
+      issueFeatureBug,
+      issueDocs,
+      totalScore,
     ].join(',');
   });
   return [USER_CSV_HEADERS.join(','), ...rows].join('\n') + '\n';
 };
 
-// 저장소별 카테고리 요약을 사람이 읽기 좋은 TXT 블록으로 만듭니다.
-export const buildRepoSummariesTxt = (
-  summaries: ReadonlyArray<RepoSummary>,
-): string => {
-  const blocks = summaries.map(s =>
-    [
-      `[${s.repoPath}]`,
-      `Merged PRs - feature/bug: ${s.mergedPrFeatureBug}, docs: ${s.mergedPrDocs}, typo: ${s.mergedPrTypo}`,
-      `Closed Issues - feature/bug: ${s.closedIssueFeatureBug}, docs: ${s.closedIssueDocs}`,
-    ].join('\n'),
-  );
-  return blocks.join('\n\n') + '\n';
-};
-
 /**
  * 저장소 요약 데이터 정보와 전체 사용자 점수 데이터를 가독성 있는 텍스트(TXT) 포맷 문자열로 빌드합니다.
  *
- * @param repos 저장소별 요약 기여 데이터 정보 배열
- * @param userScores 전체 사용자별 최종 합산 점수 및 상세 기여 데이터 배열
+ * @param data 저장소 요약 및 사용자 점수 데이터 정보 객체
+ * @param analyzedAt 리포트 분석 시각
  * @returns 텍스트(TXT) 파일용 보고서 문자열
  */
-export const buildUserScoresTxt = (users: ReadonlyArray<UserScore>): string => {
-  const lines = users.map(user => {
-    let prFeatureBug = 0;
-    let prDocs = 0;
-    let prTypo = 0;
-    let issueFeatureBug = 0;
-    let issueDocs = 0;
-    for (const repo of user.repoScores) {
-      for (const data of repo.scoreData) {
-        prFeatureBug += data.prFeatureBug;
-        prDocs += data.prDocs;
-        prTypo += data.prTypo;
-        issueFeatureBug += data.issueFeatureBug;
-        issueDocs += data.issueDocs;
-      }
-    }
-    return `- ${user.userId}: totalScore=${user.totalScore}, PR(feature/bug)=${prFeatureBug}, PR(docs)=${prDocs}, PR(typo)=${prTypo}, Issue(feature/bug)=${issueFeatureBug}, Issue(docs)=${issueDocs}`;
-  });
+export const buildUserScoresTxt = (
+  data: ScoreOutputData,
+  analyzedAt: Date = new Date(),
+): string => {
+  const repoLabel = data.repoSummaries
+    .map(summary => summary.repoPath)
+    .join(' + ');
+  const rows = data.userScores.map(aggregateUserContribution);
+  const lines = [
+    `=== ${repoLabel} 오픈소스 기여도 분석 리포트 ===`,
+    `분석 일시: ${formatDateTime(analyzedAt)}`,
+    '',
+  ];
+  const tableRows: string[][] = [];
+  const rejections: string[] = [];
 
-  return ['User Scores', ...lines].join('\n') + '\n';
+  for (const row of rows) {
+    const totalIssues = row.issueDocs + row.issueFeatureBug;
+    const totalPrs = row.prDocs + row.prFeatureBug + row.prTypo;
+
+    tableRows.push([
+      row.userId,
+      `${totalIssues} (${row.issueDocs}/${row.issueFeatureBug})`,
+      `${totalPrs} (${row.prDocs}/${row.prFeatureBug}/${row.prTypo})`,
+      String(row.totalScore),
+    ]);
+
+    const maxAdditionalPr = 3 * Math.max(row.prFeatureBug, 1);
+    const totalDocTypoPr = row.prDocs + row.prTypo;
+    const rejectedPr = Math.max(0, totalDocTypoPr - maxAdditionalPr);
+    const validPrCount =
+      row.prFeatureBug + Math.min(totalDocTypoPr, maxAdditionalPr);
+    const maxIssueCount = 4 * validPrCount;
+    const rejectedIssue = Math.max(0, totalIssues - maxIssueCount);
+
+    if (rejectedPr > 0 || rejectedIssue > 0) {
+      const userRejections = [
+        `${row.userId}:`,
+        `   [미인정 항목] 문서/오타 PR ${rejectedPr}개 초과(한도 ${maxAdditionalPr}개) / 이슈 ${rejectedIssue}개 초과(한도 ${maxIssueCount}개)`,
+      ];
+
+      if (rejectedPr > 0) {
+        const docSuggestionCount = Math.ceil(rejectedPr / 3);
+        userRejections.push(
+          `   [추가 제안] 기능/버그 PR ${docSuggestionCount}개 추가 시 문서PR 인정 한도 +${docSuggestionCount * 3}`,
+        );
+      }
+
+      if (rejectedIssue > 0) {
+        const issueSuggestionCount = Math.ceil(rejectedIssue / 4);
+        if (totalDocTypoPr < maxAdditionalPr) {
+          userRejections.push(
+            `   [추가 제안] 문서 PR ${issueSuggestionCount}개 추가 혹은 기능/버그 PR ${issueSuggestionCount}개 추가시 이슈 인정한도 +${issueSuggestionCount * 4}`,
+          );
+        } else {
+          userRejections.push(
+            `   [추가 제안] 기능/버그 PR ${issueSuggestionCount}개 추가시 이슈 인정한도 +${issueSuggestionCount * 4}`,
+          );
+        }
+      }
+
+      rejections.push(userRejections.join('\n'));
+    }
+  }
+
+  lines.push(
+    ...buildMarkdownTable(
+      ['User', 'Issues (Docs/Features)', 'PR (Docs/Features/Typo)', 'Score'],
+      tableRows,
+      new Set([1, 2, 3]),
+    ),
+  );
+
+  if (rejections.length > 0) {
+    lines.push('', '=== 미인정 항목 및 추가 제안 ===', '', ...rejections);
+  }
+
+  return lines.join('\n') + '\n';
 };
 
 export interface ScoreOutputData {
@@ -300,11 +414,8 @@ export const writeOutputFiles = async (
   };
 
   if (formats.includes('txt')) {
-    // 💡 기존 저장소 요약 하단에 사용자별 점수 요약본을 개행('\n')으로 결합하여 저장합니다.
-    const repoSummariesTxt = buildRepoSummariesTxt(data.repoSummaries);
-    const userScoresTxt = buildUserScoresTxt(data.userScores);
-
-    await Bun.write(paths.txt, repoSummariesTxt + '\n' + userScoresTxt);
+    const userScoresTxt = buildUserScoresTxt(data);
+    await Bun.write(paths.txt, userScoresTxt);
     written.txt = paths.txt;
   }
 
