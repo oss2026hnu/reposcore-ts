@@ -132,7 +132,7 @@ const buildAsciiTable = (
 /**
  * 전체 사용자 점수 목록을 받아 CSV 파일에 기록할 텍스트 문자열을 빌드합니다.
  *
- * @param userScores 각 사용자별 점수 및 상세 기여 데이터 배열
+ * @param UserScores 각 사용자별 점수 및 상세 기여 데이터 배열
  * @returns CSV 형식으로 인코딩된 헤더와 데이터 문자열
  */
 export const buildUserScoresCsv = (users: ReadonlyArray<UserScore>): string => {
