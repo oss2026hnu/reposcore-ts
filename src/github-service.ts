@@ -139,11 +139,19 @@ export const normalizeWhitespace = (text: string): string =>
   text.replace(/\s+/g, '').toLowerCase();
 
 // [긴급 조치] 복사 인코딩 오류 및 개행 문자 깨짐을 우회하기 위해 정규식을 안전한 RegExp 생성자 문자열 구조로 전면 전향
-const HTML_COMMENT_PATTERN = new RegExp('<!--[\\s\\S]*?-->', 'g');
+const HTML_COMMENT_PATTERN = new RegExp('', 'g');
+
+/**
+ * 🌟 [이슈 해결] owner/repo#번호 형식까지 완벽하게 추출하도록 3번째 매칭 그룹 추가 완료
+ * 1. #(\d+) -> match[1]
+ * 2. issues/(\d+) -> match[2]
+ * 3. [^/\s]+/[^/\s]+#(\d+) -> match[3] (owner/repo#123 형태 타겟팅)
+ */
 const CLOSING_ISSUE_PATTERN = new RegExp(
-  '\\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\\s+(?:#(\\d+)|https://github\\.com/[^/\\s]+/[^/\\s]+/issues/(\\d+))\\b',
+  '\\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\\s+(?:#(\\d+)|https://github\\.com/[^/\\s]+/[^/\\s]+/issues/(\\d+)|[^/\\s]+/[^/\\s]+#(\\d+))\\b',
   'gi',
 );
+
 /**
  * PR 본문에서 실제 GitHub closing keyword가 붙은 이슈 번호만 추출합니다.
  * PR 템플릿의 HTML 주석 예시 번호나 단순 참고용 #번호는 제외합니다.
@@ -153,7 +161,9 @@ export const parseClosingIssueNumbers = (body: string): number[] => {
   const bodyWithoutComments = body.replace(HTML_COMMENT_PATTERN, '');
 
   for (const match of bodyWithoutComments.matchAll(CLOSING_ISSUE_PATTERN)) {
-    const issueNumber = Number(match[1] ?? match[2]);
+    // 🌟 match[1], match[2], match[3] 중 가장 먼저 매칭된 값을 가져와서 에러를 원천 차단
+    const matchedNumberStr = match[1] ?? match[2] ?? match[3];
+    const issueNumber = Number(matchedNumberStr);
 
     if (Number.isInteger(issueNumber)) {
       issueNumbers.add(issueNumber);

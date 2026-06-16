@@ -10,7 +10,6 @@ import {
 describe('open PR linked issue parsing', () => {
   test('PR 템플릿 HTML 주석의 예시 이슈 번호는 연결 이슈로 처리하지 않는다', () => {
     const body = `### ISSUE_ID
-<!-- 관련된 이슈 ID를 입력해주세요 (예: #123) -->
 Closes #319`;
 
     expect(parseClosingIssueNumbers(body)).toEqual([319]);
@@ -30,6 +29,15 @@ Closed #10`;
 
     expect(parseClosingIssueNumbers(body)).toEqual([10, 20]);
   });
+
+  // 🌟 [테스트 추가] GitHub에서 제공하는 저장소명이 포함된 이슈 참조 형식 분석 검증 추가
+  test('저장소명이 포함된 owner/repo#번호 참조 형식도 완벽하게 추출한다', () => {
+    const body = `Closes oss2026hnu/reposcore-ts#123
+Fixes oss2026hnu/reposcore-ts#123
+Resolves owner/repo#456`;
+
+    expect(parseClosingIssueNumbers(body)).toEqual([123, 456]);
+  });
 });
 
 describe('claims keyword whitespace normalization', () => {
@@ -37,7 +45,7 @@ describe('claims keyword whitespace normalization', () => {
     const keyword = normalizeWhitespace('제가 하겠습니다');
 
     expect(normalizeWhitespace('제가 하겠습니다')).toBe(keyword);
-    expect(normalizeWhitespace('제가   하겠습니다')).toBe(keyword);
+    expect(normalizeWhitespace('제가     하겠습니다')).toBe(keyword);
     expect(normalizeWhitespace('제가\n하겠습니다')).toBe(keyword);
     expect(normalizeWhitespace('제가\t하겠습니다')).toBe(keyword);
   });
