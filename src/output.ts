@@ -357,10 +357,11 @@ export const buildHtmlReport = (data: ScoreOutputData): string => {
 
 /**
  * 최종 결과 데이터를 기반으로 파일 시스템에 출력 파일을 작성합니다.
- * CSV는 항상 생성하며, format 인자가 'txt'인 경우 TXT 파일도 함께 생성합니다.
+ * CSV는 항상 생성하며, formats에 'txt' 또는 'html'이 포함된 경우
+ * 해당 파일도 함께 생성합니다.
  * reposcore-cs와 동일한 사양을 따릅니다.
  *
- * @param format 생성할 파일의 포맷 형식 ('csv', 'txt', 'html')
+ * @param formats 생성할 파일의 포맷 형식 목록 ('csv', 'txt', 'html')
  * @param data 최종 출력할 저장소 요약 및 사용자 점수 데이터 정보 객체
  * @param outputDir 파일이 저장될 기본 출력 디렉토리 경로 (기본값: DEFAULT_OUTPUT_DIR)
  * @param subDir 추가적으로 생성할 하위 디렉토리 명 (선택 사항)
