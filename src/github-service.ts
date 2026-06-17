@@ -21,13 +21,6 @@ interface ClaimsPageResponse {
         title: string;
         url: string;
         labels: {nodes: {name: string}[]};
-        comments: {
-          nodes: {
-            body: string;
-            author: {login: string} | null;
-            createdAt: string;
-          }[];
-        };
       }[];
       pageInfo: PageInfo;
     };
@@ -55,13 +48,6 @@ interface ClaimsSearchResponse {
       url: string;
       state: string;
       labels: {nodes: {name: string}[]};
-      comments: {
-        nodes: {
-          body: string;
-          author: {login: string} | null;
-          createdAt: string;
-        }[];
-      };
     }>;
     pageInfo: PageInfo;
   };
@@ -73,6 +59,23 @@ type RawPullRequest = Omit<PRRecord, 'category'>;
 interface PageInfo {
   hasNextPage: boolean;
   endCursor: string | null;
+}
+
+type ClaimCommentNode = {
+  body: string;
+  author: {login: string} | null;
+  createdAt: string;
+};
+
+interface IssueCommentsPageResponse {
+  repository: {
+    issue: {
+      comments: {
+        nodes: ClaimCommentNode[];
+        pageInfo: PageInfo;
+      };
+    };
+  };
 }
 
 interface IssuePageResponse {
@@ -710,6 +713,58 @@ export const createGitHubService = (token: string, pageSize = PAGE_SIZE) => {
     return issueToOpenPr;
   };
 
+  const getAllIssueComments = async (
+    owner: string,
+    repo: string,
+    issueNumber: number,
+  ): Promise<ClaimCommentNode[]> => {
+    const comments: ClaimCommentNode[] = [];
+    let cursor: string | null = null;
+    let hasNextPage = true;
+
+    while (hasNextPage) {
+      const response: IssueCommentsPageResponse =
+        await githubGraphQL<IssueCommentsPageResponse>(
+          `
+        query(
+          $owner: String!
+          $repo: String!
+          $issueNumber: Int!
+          $pageSize: Int!
+          $cursor: String
+        ) {
+          repository(owner: $owner, name: $repo) {
+            issue(number: $issueNumber) {
+              comments(first: $pageSize, after: $cursor) {
+                nodes {
+                  body
+                  author { login }
+                  createdAt
+                }
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+              }
+            }
+          }
+        }
+        `,
+          {owner, repo, issueNumber, pageSize, cursor},
+        );
+
+      const connection: IssueCommentsPageResponse['repository']['issue']['comments'] =
+        response.repository.issue.comments;
+
+      comments.push(...connection.nodes);
+
+      cursor = connection.pageInfo.endCursor;
+      hasNextPage = connection.pageInfo.hasNextPage && cursor !== null;
+    }
+
+    return comments;
+  };
+
   /**
    * 저장소의 열린 이슈와 최근 댓글을 모두 조회합니다 (전체 조회).
    * @param owner 저장소 소유자
@@ -720,7 +775,7 @@ export const createGitHubService = (token: string, pageSize = PAGE_SIZE) => {
     owner: string,
     repo: string,
   ): Promise<ClaimsIssueNode[]> => {
-    const issues: ClaimsIssueNode[] = [];
+    const issues: Omit<ClaimsIssueNode, 'comments'>[] = [];
     let cursor: string | null = null;
     let hasNextPage = true;
 
@@ -736,13 +791,6 @@ export const createGitHubService = (token: string, pageSize = PAGE_SIZE) => {
                   title
                   url
                   labels(first: 20) { nodes { name } }
-                  comments(last: 10) {
-                    nodes {
-                      body
-                      author { login }
-                      createdAt
-                    }
-                  }
                 }
                 pageInfo {
                   hasNextPage
@@ -762,7 +810,14 @@ export const createGitHubService = (token: string, pageSize = PAGE_SIZE) => {
       hasNextPage = connection.pageInfo.hasNextPage && cursor !== null;
     }
 
-    return issues;
+    return Promise.all(
+      issues.map(async issue => ({
+        ...issue,
+        comments: {
+          nodes: await getAllIssueComments(owner, repo, issue.number),
+        },
+      })),
+    );
   };
 
   /**
@@ -777,7 +832,8 @@ export const createGitHubService = (token: string, pageSize = PAGE_SIZE) => {
     repo: string,
     since: string,
   ): Promise<Array<ClaimsIssueNode & {state: string}>> => {
-    const issues: Array<ClaimsIssueNode & {state: string}> = [];
+    const issues: Array<Omit<ClaimsIssueNode, 'comments'> & {state: string}> =
+      [];
     let cursor: string | null = null;
     let hasNextPage = true;
 
@@ -794,13 +850,6 @@ export const createGitHubService = (token: string, pageSize = PAGE_SIZE) => {
                   url
                   state
                   labels(first: 20) { nodes { name } }
-                  comments(last: 10) {
-                    nodes {
-                      body
-                      author { login }
-                      createdAt
-                    }
-                  }
                 }
               }
               pageInfo {
@@ -823,7 +872,14 @@ export const createGitHubService = (token: string, pageSize = PAGE_SIZE) => {
       hasNextPage = response.search.pageInfo.hasNextPage && cursor !== null;
     }
 
-    return issues;
+    return Promise.all(
+      issues.map(async issue => ({
+        ...issue,
+        comments: {
+          nodes: await getAllIssueComments(owner, repo, issue.number),
+        },
+      })),
+    );
   };
 
   /**

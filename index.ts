@@ -121,6 +121,7 @@ cli
       // undefined(옵션 미지정)와 ['true'](값 없는 --keywords) 모두 기본 키워드로 폴백합니다.
       const isDefaultFallback =
         options.keywords === undefined ||
+        String(options.keywords) === 'undefined' ||
         (Array.isArray(options.keywords) &&
           options.keywords.length === 1 &&
           options.keywords[0] === 'true');
